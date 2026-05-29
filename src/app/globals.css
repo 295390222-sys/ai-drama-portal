@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #000;
+  --foreground: #fff;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* 防止手机浏览器输入时自动放大 */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+/* QQ 内置浏览器滚动优化 */
+html,
+body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
