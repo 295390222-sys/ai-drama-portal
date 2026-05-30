@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/video.html",
+      "destination": "/creator/video",
+      "statusCode": 302
+    },
+    {
       "source": "/",
       "destination": "/creator/video",
       "statusCode": 302
