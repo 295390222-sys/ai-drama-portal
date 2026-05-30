@@ -57,35 +57,64 @@ function VideoPageContent() {
   const [execState, setExecState] = useState<ExecutionState | null>(null);
 
   useEffect(() => {
-    getAllCharacters().then((chars) => setCharCount(chars.length));
+  // 自动迁移：从 localStorage 迁移角色到 IndexedDB
+  const autoMigrateAndLoad = async () => {
+    // 1. 先从 IndexedDB 读取角色
+    let chars = await getAllCharacters();
     
-    // 自动配置通义万相 API Key（如果 localStorage 中没有）
-    try {
-      const existing = localStorage.getItem("wanxiang_api_config");
-      if (!existing) {
-        // 检查旧的 ai_drama_api_config 是否有 Wanxiang Key
-        const oldRaw = localStorage.getItem("ai_drama_api_config");
-        if (oldRaw) {
-          const old = JSON.parse(oldRaw);
-          if (old.key && old.provider === "wanxiang") {
-            localStorage.setItem(
-              "wanxiang_api_config",
-              JSON.stringify({ apiKey: old.key })
-            );
+    // 2. 如果 IndexedDB 没有，检查 localStorage
+    if (chars.length === 0) {
+      const localRaw = localStorage.getItem("ai_drama_characters");
+      if (localRaw) {
+        try {
+          const localChars = JSON.parse(localRaw);
+          if (localChars && localChars.length > 0) {
+            // 动态导入 putCharacter
+            const { putCharacter } = await import("@/lib/db");
+            for (const char of localChars) {
+              await putCharacter(char);
+            }
+            console.log(`✅ 自动迁移成功！已将 ${localChars.length} 个角色从旧系统迁移到 IndexedDB`);
+            // 重新加载
+            chars = await getAllCharacters();
           }
+        } catch (e) {
+          console.error("自动迁移失败:", e);
         }
-        // 检查 URL 参数 ?key=xxx
-        const params = new URLSearchParams(window.location.search);
-        const keyFromUrl = params.get("key");
-        if (keyFromUrl && keyFromUrl.startsWith("sk-")) {
+      }
+    }
+    
+    // 3. 更新角色数量
+    setCharCount(chars.length);
+  };
+  
+  autoMigrateAndLoad();
+  
+  // 自动配置通义万相 API Key
+  try {
+    const existing = localStorage.getItem("wanxiang_api_config");
+    if (!existing) {
+      const oldRaw = localStorage.getItem("ai_drama_api_config");
+      if (oldRaw) {
+        const old = JSON.parse(oldRaw);
+        if (old.key && old.provider === "wanxiang") {
           localStorage.setItem(
             "wanxiang_api_config",
-            JSON.stringify({ apiKey: keyFromUrl })
+            JSON.stringify({ apiKey: old.key })
           );
         }
       }
-    } catch {}
-  }, []);
+      const params = new URLSearchParams(window.location.search);
+      const keyFromUrl = params.get("key");
+      if (keyFromUrl && keyFromUrl.startsWith("sk-")) {
+        localStorage.setItem(
+          "wanxiang_api_config",
+          JSON.stringify({ apiKey: keyFromUrl })
+        );
+      }
+    }
+  } catch {}
+}, []);
 
   // ========== 主流程 ==========
 
