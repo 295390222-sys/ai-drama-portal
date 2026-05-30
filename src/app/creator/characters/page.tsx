@@ -1,7 +1,10 @@
 "use client";
+"use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { putCharacter, deleteCharacter, getAllCharacters } from "@/lib/db";
+
 
 const MAX_CHARACTERS = 6;
 
@@ -89,13 +92,20 @@ function CharacterAvatar({ name, imageUrl, imageSource, className }: {
   );
 }
 
-function loadCharacters(): Character[] {
+async function loadCharacters(): Promise<Character[]> {
   if (typeof window === "undefined") return [];
-  try { const raw = localStorage.getItem("ai_drama_characters"); return raw ? JSON.parse(raw) : []; } catch { return []; }
+  try {
+    const chars = await getAllCharacters();
+    return chars;
+  } catch {
+    return [];
+  }
 }
 
-function saveCharacters(list: Character[]) {
-  localStorage.setItem("ai_drama_characters", JSON.stringify(list));
+async function saveCharacters(list: Character[]) {
+  for (const char of list) {
+    await putCharacter(char);
+  }
 }
 
 export default function CharactersPage() {
@@ -112,8 +122,12 @@ export default function CharactersPage() {
   const [imageSource, setImageSource] = useState<"ai" | "upload">("ai");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setCharacters(loadCharacters()); setLoading(false); }, []);
-
+  useEffect(() => {
+  loadCharacters().then(chars => {
+    setCharacters(chars);
+    setLoading(false);
+  });
+}, []);
   const updatePreview = useCallback((desc: string) => {
     if (!desc.trim()) { setPreviewUrl(""); return; }
     setPreviewUrl(generateCharacterImage(desc));
@@ -153,17 +167,20 @@ export default function CharactersPage() {
     } else {
       list.push({ id: genId(), name: formName.trim(), role: formRole, description: formDesc.trim(), imageUrl: imageUrl || "", imageSource, createdAt: Date.now() });
     }
-    saveCharacters(list); setCharacters(list);
+    await saveCharacters(list);
+setCharacters(list);
     // AI图片生成需要一点时间，让用户看到加载状态
     if (imageSource === "ai") await new Promise((r) => setTimeout(r, 1500));
     // 保存成功后跳到创作者首页（用 location.href 触发整页加载，解决 QQ 浏览器跳转问题）
     window.location.href = "/creator";
   };
 
-  const handleDelete = (id: string) => {
-    const list = characters.filter((c) => c.id !== id);
-    saveCharacters(list); setCharacters(list); setShowForm(false);
-  };
+  const handleDelete = async (id: string) => {
+  await deleteCharacter(id);
+  const list = characters.filter((c) => c.id !== id);
+  setCharacters(list);
+  setShowForm(false);
+};
 
   if (loading) return <div className="flex h-screen items-center justify-center bg-black"><div className="animate-pulse text-zinc-500">加载中...</div></div>;
 
