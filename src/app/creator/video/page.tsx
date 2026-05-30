@@ -196,7 +196,7 @@ function VideoPageContent() {
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black">
       <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
         <button
-          onClick={() => router.push("/")}
+          onClick={() => window.location.href = "/creator"}
           className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white"
         >
           ← 返回
